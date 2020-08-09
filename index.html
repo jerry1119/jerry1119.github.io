@@ -7,7 +7,7 @@
         * SITE_NAME：站点名称
         */
         window.GLOBAL_CONFIG = {
-            SCF_GATEWAY: "https://summer-poetry-4295.olddriver.workers.dev/",
+            SCF_GATEWAY: "https://fodimv.olddriver.workers.dev/",
             SITE_NAME: "FODI",
             IS_CF: true
         };
@@ -29,6 +29,8 @@
     <script src="//s0.pstatp.com/cdn/expire-1-M/jquery/3.4.0/jquery.min.js"></script>
     <script src="//s0.pstatp.com/cdn/expire-1-M/fancybox/3.5.7/jquery.fancybox.min.js"></script>
     <link href="//s0.pstatp.com/cdn/expire-1-M/fancybox/3.5.7/jquery.fancybox.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/aplayer@1.10.0/dist/APlayer.min.css">
+    <script src="//cdn.jsdelivr.net/npm/aplayer@1.10.0/dist/APlayer.min.js"></script>
     <style>
         .password-wrapper {
             display: flex;
@@ -504,13 +506,13 @@
         function renderFileList(files) {
             switchRightDisplay();
 
-            const createFileWrapper = (type, name, time, size, path, url) => {
+            const createFileWrapper = (type, name, time, size, path, url,mp3FileInfos,mp3FileCurrentCount) => {
                 let fileWrapper = document.getElementById('file-wrapper-templete').content.cloneNode(true);
                 fileWrapper.querySelector('ion-icon').setAttribute('name', type);
                 fileWrapper.querySelector('.name').innerHTML = name;
                 fileWrapper.querySelector('.time').innerHTML = time;
                 fileWrapper.querySelector('.size').innerHTML = size;
-                addFileListLineListener(fileWrapper.querySelector('.row.file-wrapper'), path, url, size);
+                addFileListLineListener(fileWrapper.querySelector('.row.file-wrapper'), path, url, size,name,mp3FileInfos,mp3FileCurrentCount);
                 return fileWrapper;
             };
 
@@ -563,12 +565,28 @@
 
             let fileList = document.getElementById('file-list');
             fileList.innerHTML = '';
+            let mp3FileInfos = [];
+            let mp3FileCurrentCount = 0;
+            let mp3Suffix = 'mp3,flac,wav,m4a';
+            files.files.forEach(file => {
+                let check_suffix = file.name.split('.').pop();
+                if(mp3Suffix.indexOf(check_suffix)>=0)
+                    {
+                        let mp3FileInfo ={name:file.name,url:file.url};
+                        mp3FileInfos.push(mp3FileInfo);
+                    }
+            });
             files.files.forEach(file => {
                 if (file.name.split('.').pop() === 'md') {
                     if (file.url) {
                         renderReadme(files.parent + '/' + file.name, file.url);
                     }
                 } else {
+                    let check_suffix1 = file.name.split('.').pop();
+                    if(mp3Suffix.indexOf(check_suffix1)>=0)
+                    {
+                        mp3FileCurrentCount++;
+                    }
                     const parent = files.parent === window.api.root ? '' : files.parent;
                     fileList.appendChild(createFileWrapper(
                         file.url ? 'document' : 'folder',
@@ -576,7 +594,9 @@
                         formatDate(file.time),
                         formatSize(file.size),
                         parent + '/' + file.name,
-                        file.url
+                        file.url,
+                        mp3FileInfos,
+                        mp3FileCurrentCount
                     ));
                 }
             });
@@ -769,7 +789,7 @@
             });
         }
 
-        function addFileListLineListener(elem, path, url, size) {
+        function addFileListLineListener(elem, path, url, size,name,mp3FileInfos,mp3FileCurrentCount) {
             if (url) {
                 elem.addEventListener('click', event => {
                     window.backFordwardCache.preview = true;
@@ -806,7 +826,7 @@
                             };
                             if (['bmp', 'jpg', 'png', 'svg', 'webp', 'gif'].contains(suffix)) {
                                 return 'image';
-                            } else if (['mp3', 'flac', 'wav'].contains(suffix)) {
+                            } else if (['mp3', 'flac', 'wav','m4a'].contains(suffix)) {
                                 return 'audio';
                             } else if (['mp4', 'avi', 'mkv', 'flv', 'm3u8'].contains(suffix)) {
                                 return 'video';
@@ -881,6 +901,17 @@
                                     }
                                 })
                             });
+                        },
+                        createAplayer: (elem) => {
+                            const ap = new APlayer({
+                                container: elem,
+                                audio:mp3FileInfos,
+                                theme:'	#F4A460',
+                                autoplay:true,
+                                listFolded:true,
+                                listMaxHeight:10
+                            });
+                            ap.list.switch(mp3FileCurrentCount-1);
                         }
                     }
                     const suffix = path.split('.').pop();
@@ -898,12 +929,9 @@
                             content.append(fancy);
                             break;
                         case 'audio':
-                            let audio = new Audio();
-                            audio.style.outline = 'none';
-                            audio.preload = 'auto';
-                            audio.controls = 'controls';
-                            audio.style.width = '100%';
-                            audio.src = url;
+                            let audio = document.createElement('div');
+                            audio.style.backgroundColor = 'burlywood';
+                            previewHandler.createAplayer(audio);
                             content.innerHTML = '';
                             content.append(audio);
                             break;
